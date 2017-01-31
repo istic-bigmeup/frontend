@@ -1,9 +1,10 @@
-*Front-end de BigMeUp
+# Front-end de BigMeUp
 
-Projet d'entreprise du second semestre du Master 1 Miage à l'université de Rennes 1.
+Projet d'entreprise du second semestre du Master 1 Miage Ã  l'universitÃ© de Rennes 1.
 
-Projet donné par l'entreprise BigMeUp, concernant le portage adminisratif.
+Projet donnÃ© par l'entreprise BigMeUp, concernant le portage adminisratif.
 
-**Technologie utilisée
+## Technologie utilisÃ©e
 
-ReactJS
+* ReactJS
+* Bootstrap
