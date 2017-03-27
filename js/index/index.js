@@ -1,30 +1,30 @@
 var ExampleApplication = React.createClass({
-	notAvailable: function () {
-		alert("Pas encore implémenté");
+	chercher: function () {
+		var skill = document.getElementsByName("competence")[0].value;
+		window.open("https://www.bigmeup.fr/?q=" + skill, "_blank");
 	},
 	
 	render: function () {
 		return (
-			<form className="form-group">
-				<table className="table table-responsive">
-					<tbody>
-						<tr>
-							<td>
-								<input 	className="form-control" 
-										type="text" 
-										placeholder="Compétences recherchées" />
-							</td>
-							
-							<td>
-								<input 	className="btn btn-primary"
-										type="button"
-										onClick={this.notAvailable}
-										value="Chercher" />
-							</td>
-						</tr>
-					</tbody>
-				</table>
-			</form>
+			<table className="table table-responsive">
+				<tbody>
+					<tr>
+						<td>
+							<input 	className="form-control" 
+									type="text"
+									name="competence"
+									placeholder="Compétences recherchées" />
+						</td>
+						
+						<td>
+							<input 	className="btn btn-primary"
+									type="button"
+									onClick={this.chercher}
+									value="Chercher" />
+						</td>
+					</tr>
+				</tbody>
+			</table>
 		);
 	}
   });
