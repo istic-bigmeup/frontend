@@ -1,30 +1,67 @@
-var ExampleApplication = React.createClass({
-	chercher: function () {
-		var skill = document.getElementsByName("competence")[0].value;
-		window.open("https://www.bigmeup.fr/?q=" + skill, "_blank");
+var BoxLogin = React.createClass({
+	disconnect: function(){
+		var date = new Date();
+		date.setTime(date.getTime() - (1*24*60*60*1000));
+
+		// Sets the cookie
+		document.cookie = "bmu_connecte=true; expires=" + date + "; path=/";
+		document.cookie = "bmu_user_id=0; expires=" + date + "; path=/";
+		document.cookie = "bmu_admin_id=0; expires=" + date + "; path=/";
+
+		// Redirects to profil.html
+		document.location = "../index.html";
 	},
-	
+
+	render: function(){
+		return (
+			<div className="col-lg-4 tile tile1">
+				<h2><a href="#" className="display-2" onClick={this.disconnect}>Me Deconnecter</a></h2>
+			</div>
+		);
+	}
+});
+
+var BoxMission = React.createClass({
+	render: function(){
+		return (
+			<div className="col-lg-4 tile tile1">
+				<h1><a href="missions.html" className="display-2">Mes missions</a></h1>
+			</div>
+		);
+	}
+});
+
+var BoxProfil = React.createClass({
+	render: function(){
+		return (
+			<div className="col-lg-4 tile tile1">
+				<h1><a href="profil.html" className="display-2">Mon Profil</a></h1>
+			</div>
+		);
+	}
+});
+
+var BoxCompta = React.createClass({
+	render: function(){
+		return (
+			<div className="col-lg-4 tile tile1">
+				<h1><a href="livre_compte.html" className="display-2">Mon livre de compte</a></h1>
+			</div>
+		);
+	}
+});
+
+
+var ExampleApplication = React.createClass({
+
 	render: function () {
 		return (
-			<table className="table table-responsive">
-				<tbody>
-					<tr>
-						<td>
-							<input 	className="form-control" 
-									type="text"
-									name="competence"
-									placeholder="Compétences recherchées" />
-						</td>
-						
-						<td>
-							<input 	className="btn btn-primary"
-									type="button"
-									onClick={this.chercher}
-									value="Chercher" />
-						</td>
-					</tr>
-				</tbody>
-			</table>
+			<div>
+				<BoxCompta />
+				<BoxProfil />
+				<BoxMission />
+				<BoxLogin />
+			</div>
 		);
 	}
   });

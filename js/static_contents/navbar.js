@@ -9,7 +9,7 @@ var Navbar = React.createClass({
 		document.cookie = "bmu_admin_id=0; expires=" + date + "; path=/";
 
 		// Redirects to profil.html
-		document.location = "index.html";
+		document.location = "../index.html";
 	},
 	render: function () {
 		var cookiesTmp = document.cookie.split("; ");
@@ -34,6 +34,7 @@ var Navbar = React.createClass({
 						{connecte ? "" : <li><a href="connexion.html">Connexion</a></li>}
 						{connecte ? <li><a href="missions.html">Missions</a></li> : ""}
 						{connecte ? <li><a href="profil.html">Profil</a></li> : ""}
+						{connecte ? <li><a href="livre_compte.html">Mon livre de compte</a></li> : ""}
 						{connecte ? <li><a href="document.html">Gestion des documents</a></li> : ""}
 						{connecte ? <li><a href="#" onClick={this.disconnect}>Déconnexion</a></li> : ""}
 					</ul>
