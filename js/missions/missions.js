@@ -4,7 +4,7 @@
  *
  */
 var userId = getCookie("bmu_user_id");
-var _url = 'http://bigmeup.istic.univ-rennes1.fr/api/front/getMissions.php?id_user=' + userId;
+var _url = 'http://administration.bigmeup.fr/api/front/getMissions.php?id_user=' + userId;
 
 // Where the user is the client
 var tabClient 	= [];
@@ -75,10 +75,10 @@ var Entete = React.createClass({
         return (
             <ul className="nav nav-tabs">
                 <li className="active">
-					<a data-toggle="tab" href="#prestataire">Prestataire</a>
+					<a data-toggle="tab" href="#prestataire">Missions où je suis le prestataire</a>
 				</li>
                 <li>
-					<a data-toggle="tab" href="#client">Client</a>
+					<a data-toggle="tab" href="#client">Missions où je suis le client</a>
 				</li>
             </ul>
         );
@@ -107,6 +107,7 @@ var Prestataire = React.createClass({
 			// Adds the generated table row
 			returnValue.push(
 			<tr key={i}>
+				<td>{tabPresta[i]["date_derniere_modif"]}</td>
 				<td>{tabUsr[tabPresta[i]["id_client"]]}</td>
 				<td>{tabPresta[i]["objet"]}</td>
 				<td>{tabPresta[i]["status"]}</td>
@@ -125,18 +126,30 @@ var Prestataire = React.createClass({
 		// The tab's text
 		return (
             <div id="prestataire" className="tab-pane fade in active">
-                <table className="table table-striped">
-					<tbody>
+                <table id="tab1" className="table table-striped">
+					<thead>
 						<tr>
+							<th>Dernière modification</th>
 							<th>Client</th>
 							<th>Objet</th>
 							<th>Etat</th>
 							<th></th>
 						</tr>
-						
+					</thead>
+					
+					<tbody>
 						{this.tab()}
-						
 					</tbody>
+					
+					<tfoot>
+						<tr>
+							<th>Dernière modification</th>
+							<th>Client</th>
+							<th>Objet</th>
+							<th>Etat</th>
+							<th></th>
+						</tr>
+					</tfoot>
 				</table>
             </div>
         );
@@ -153,6 +166,7 @@ var Client = React.createClass({
 			
 			returnValue.push(
 			<tr key={i}>
+				<td>{tabClient[i]["date_derniere_modif"]}</td>
 				<td>{tabUsr[tabClient[i]["id_prestataire"]]}</td>
 				<td>{tabClient[i]["objet"]}</td>
 				<td>{tabClient[i]["status"]}</td>
@@ -170,17 +184,30 @@ var Client = React.createClass({
 		// The tab's text
 		return (
             <div id="client" className="tab-pane fade">
-                <table className="table table-striped">
-					<tbody>
+                <table id="tab2" className="table table-striped">
+					<thead>
 						<tr>
+							<th>Dernière modification</th>
 							<th>Prestataire</th>
 							<th>Objet</th>
 							<th>Etat</th>
 							<th></th>
 						</tr>
-						
+					</thead>
+					
+					<tbody>
 						{this.tab()}
 					</tbody>
+					
+					<tfoot>
+						<tr>
+							<th>Dernière modification</th>
+							<th>Prestataire</th>
+							<th>Objet</th>
+							<th>Etat</th>
+							<th></th>
+						</tr>
+					</tfoot>
 				</table>
             </div>
         );
@@ -189,7 +216,30 @@ var Client = React.createClass({
 
 var CreationMission = React.createClass({
 	nouveau: function(){
-		document.location = "creationMission.html";
+		var ok = false;
+		
+		// On contrôle le fait que l'utilisateur a tous ses documents validés
+		$.ajax({
+			url: "http://administration.bigmeup.fr/api/front/getDocument.php?controleValide=" + userId,
+			async: false
+		}).done(function(data){// When done
+			// Parses the data from a JSON to an array
+			data = JSON.parse(data);
+			
+			ok = data["kbis"] == "true" && data["cotSoc"] == "true" && data["cotFisc"] == "true";
+		});
+
+		if(ok){
+			document.location = "creationMission.html";
+		} else {
+			// On crée le cookie
+			var date = new Date();
+			date.setTime(date.getTime() + (1*24*60*60*1000));
+			document.cookie = "type_message_navbar=danger; expires=" + date + "; path=/";
+			document.cookie = "texte_message_navbar=Vos documents ne sont plus valables; expires=" + date + "; path=/";
+			
+			location.reload();
+		}
 	},
 	
     render: function () {
@@ -219,3 +269,20 @@ var Container = React.createClass({
 });
 
 ReactDOM.render(<Container />, document.getElementById("container"));
+
+
+$(document).ready(function() {
+	$('#tab1').DataTable({
+		"language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.15/i18n/French.json"
+        }
+	});
+});
+
+$(document).ready(function() {
+	$('#tab2').DataTable({
+		"language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.15/i18n/French.json"
+        }
+	});
+});

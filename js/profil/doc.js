@@ -21,7 +21,7 @@ var kbis 	= [];
 var cotSoc	= [];
 var cotFis	= [];
 
-var URL 		= "http://bigmeup.istic.univ-rennes1.fr/documents/";
+var URL 		= "http://administration.bigmeup.fr/documents/";
 // TAILLE_MAX = octets * 1000 -> pour avoir en kilo octets
 var TAILLE_MAX 	= 2000 * 1000;
 
@@ -41,7 +41,7 @@ var controleChamps = function(){
  */
 // Sets the ajax request
 $.ajax({
-	url: "http://bigmeup.istic.univ-rennes1.fr/api/front/getDocument.php?id_user=" + cookies["bmu_user_id"],
+	url: "http://administration.bigmeup.fr/api/front/getDocument.php?id_user=" + cookies["bmu_user_id"],
 	async: false
 }).done(function (data) {// When done
 	// Parses the data from a JSON to an array
@@ -63,6 +63,22 @@ $.ajax({
 /** 
  * ================= Elements react ================
  */
+
+/**
+ * Permet d'afficher le champ des informations
+ */
+var Infos = React.createClass({
+	render: function() {
+		return (
+			<div className="text-info">
+				<p>
+					Les documents que vous importez doivent être sous fomat <b>image</b> ou <b>pdf</b>.<br/>
+					La taille maximum de chaque document doit être inférieure à <b>2 Mo</b>
+				</p>
+			</div>
+		);
+	}
+});
 
 /**
  * Permet d'afficher le champ de la date d'échéance
@@ -99,7 +115,7 @@ var Echeance = React.createClass({
 	render: function() {
 		return (
 			<tr>
-				<th>Date d'échéance</th>
+				<th>Date d'échéance de la validité</th>
 				<td>{this.text()}</td>
 			</tr>
 		);
@@ -110,34 +126,35 @@ var Echeance = React.createClass({
  * Permet d'afficher le champ de la date d'échéance
  */
 var Verification = React.createClass({
+	getEtat: function(etat){
+		switch(etat){
+			case "0":
+				return "En cours de traitement";
+			
+			case "1":
+				return "Validé";
+			
+			case "2":
+				return "Refusé";
+			
+			case "4":
+				return "Annulé";
+			
+			default:
+				return "--";
+		}
+	},
+	
 	text: function(){
 		switch(this.props.typeDoc){
 			case "kbis":
-				return 	kbis.length > 0 ? 
-							kbis[kbis.length - 1]["verification"] == "0" ? 
-								"Non" 
-								: kbis[kbis.length - 1]["verification"] == "-1" ? 
-									"Refusé"
-									: "Oui"  
-							: "--";
+				return 	kbis.length > 0 ? this.getEtat(kbis[kbis.length - 1]["verification"]) : "--";
 			
 			case "cotSoc":
-				return 	cotSoc.length > 0 ? 
-							cotSoc[cotSoc.length - 1]["verification"] == "0" ? 
-								"Non" 
-								: cotSoc[cotSoc.length - 1]["verification"] == "-1" ? 
-									"Refusé"
-									: "Oui" 
-							: "--";
+				return 	cotSoc.length > 0 ? this.getEtat(cotSoc[cotSoc.length - 1]["verification"]) : "--";
 			
 			case "cotFisc":
-				return 	cotFis.length > 0 ? 
-							cotFis[cotFis.length - 1]["verification"] == "0" ? 
-								"Non" 
-								: cotFis[cotFis.length - 1]["verification"] == "-1" ? 
-									"Refusé"
-									: "Oui" 
-							: "--";
+				return 	cotFis.length > 0 ? this.getEtat(cotFis[cotFis.length - 1]["verification"]) : "--";
 			
 			default:
 				return "--";
@@ -165,8 +182,8 @@ var Kbis = React.createClass({
 				
 				<table className="table table-striped">
 					<tbody>
-						<Echeance typeDoc="kbis"/>
 						<Verification typeDoc="kbis"/>
+						<Echeance typeDoc="kbis"/>
 						
 						<Consulter typeDoc="kbis"/>
 						<Importer typeDoc="kbis"/>
@@ -184,12 +201,12 @@ var CotSoc = React.createClass({
 	render: function(){
 		return (
 			<div>
-				<h1>Côtisations sociales</h1>
+				<h1>Cotisations sociales</h1>
 				
 				<table className="table table-striped">
 					<tbody>
-						<Echeance typeDoc="cotSoc"/>
 						<Verification typeDoc="cotSoc"/>
+						<Echeance typeDoc="cotSoc"/>
 						
 						<Consulter typeDoc="cotSoc"/>
 						<Importer typeDoc="cotSoc"/>
@@ -207,12 +224,12 @@ var CotFisc = React.createClass({
 	render: function(){
 		return (
 			<div>
-				<h1>Côtisations fiscales</h1>
+				<h1>Cotisations fiscales</h1>
 				
 				<table className="table table-striped">
 					<tbody>
-						<Echeance typeDoc="cotFisc"/>
 						<Verification typeDoc="cotFisc"/>
+						<Echeance typeDoc="cotFisc"/>
 						
 						<Consulter typeDoc="cotFisc"/>
 						<Importer typeDoc="cotFisc"/>
@@ -285,7 +302,7 @@ var Importer = React.createClass({
 				fd.append("user_id", cookies["bmu_user_id"]);
 				
 				$.ajax({
-				   url: "http://bigmeup.istic.univ-rennes1.fr/api/front/setDocument.php",
+				   url: "http://administration.bigmeup.fr/api/front/setDocument.php",
 				   type: "POST",
 				   data: fd,
 				   processData: false,
@@ -319,7 +336,7 @@ var Importer = React.createClass({
 						id={this.props.typeDoc + "Err"}
 						style={{display:"none"}}>
 							<br/>
-							Veuillez sélectionner un fichier image ou pdf de moins de {TAILLE_MAX} ko.
+							Veuillez sélectionner un fichier image ou pdf de moins de {TAILLE_MAX / 1000000} Mo.
 							<br/>
 					</p>
 					
@@ -339,6 +356,7 @@ var Documents = React.createClass({
 	render: function() {
 		return ( 
 			<div>
+				<Infos />
 				<Kbis />
 				<CotSoc />
 				<CotFisc />

@@ -11,8 +11,7 @@ var champs = 	[
 					"telephone",
 					"ville",
 					"status",
-					"numero_tva",
-					"a_propos"
+					"numero_tva"
 				];
 var cookiesTmp = document.cookie.split("; ");
 var cookies = [];
@@ -54,7 +53,7 @@ var controleChamps = function(){
  */
 // Sets the ajax request
 $.ajax({
-	url: "http://bigmeup.istic.univ-rennes1.fr/api/front/getUser.php?id=" + USR,
+	url: "http://administration.bigmeup.fr/api/front/getUser.php?id=" + USR,
 	async: false
 }).done(function (data) {// When done
 	// Parses the data from a JSON to an array
@@ -227,7 +226,7 @@ var Telephone = React.createClass({
  */
 var Siret = React.createClass({
 	getChamp: function(){
-		return 	isModify() ? 
+		return 	isAdmin() ? 
 				(<input	className	="form-control"
 						id			="numero_siret"
 						type		="text" 
@@ -253,11 +252,11 @@ var Siret = React.createClass({
  */
 var Statut = React.createClass({
 	getChamp: function(){
-		return 	isModify() ? 
+		return 	isAdmin() ? 
 				(<input	className	="form-control"
 						id			="status"
 						type		="text" 
-						placeholder	="Le statut de l'utilisateur"
+						placeholder	="La dénomination de l'utilisateur"
 						defaultValue={values["status"]}/>)
 				:
 				(<p>{values["status"]}</p>);
@@ -266,7 +265,7 @@ var Statut = React.createClass({
 	render: function() {
 		return (
 			<div>
-				<p><b>Statut</b></p>
+				<p><b>Dénomination</b></p>
 				
 				{this.getChamp()}
 			</div>
@@ -293,31 +292,6 @@ var Tva = React.createClass({
 		return (
 			<div>
 				<p><b>Numéro de TVA</b></p>
-				
-				{this.getChamp()}
-			</div>
-		);
-	}
-});
-
-/**
- * Permet d'afficher le champ du Statut
- */
-var Informations = React.createClass({
-	getChamp: function(){
-		return 	isModify() ? 
-				(<textarea	className	="form-control"
-							id			="a_propos"
-							placeholder	="Informations complémentaires"
-							defaultValue={values["a_propos"]}></textarea>)
-				:
-				(<p>{values["a_propos"]}</p>);
-	},
-	
-	render: function() {
-		return (
-			<div>
-				<p><b>Informations complémentaires</b></p>
 				
 				{this.getChamp()}
 			</div>
@@ -429,7 +403,7 @@ var Sauvegarder = React.createClass({
 			}
 			
 			$.ajax({
-				url: "http://bigmeup.istic.univ-rennes1.fr/api/front/setUser.php",
+				url: "http://administration.bigmeup.fr/api/front/setUser.php",
 				type: "POST",
 				data: data
 			}).done(function(data){// When done
@@ -440,15 +414,21 @@ var Sauvegarder = React.createClass({
 					// On met la date de fin
 					var date = new Date();
 					date.setTime(date.getTime() - (1 * 24 * 60 * 60 * 1000));
-					// On met le cookie
+					// On met le cookie pour quitter le menu de modification
 					document.cookie 	= "bmu_modif_profil=true; expires=" + date + "; path=/";
+					
+					// On met le cookie pour afficher le fait que la modification a été effectuée
+					var date = new Date();
+					date.setTime(date.getTime() + (1*24*60*60*1000));
+					document.cookie = "type_message_navbar=success; expires=" + date + "; path=/";
+					document.cookie = "texte_message_navbar=Modifications effectuées; expires=" + date + "; path=/";
 					
 					if(cookies["bmu_adm_usr_id"] == undefined){// Si c'est pas un admin
 						// On recharge la page
 						document.location = "profil.html";
 					} else {// Sinon
 						document.cookie   = "bmu_adm_usr_id=true; expires=" + date + "; path=/";
-						document.location = "http://bigmeup.istic.univ-rennes1.fr/backend/utilisateurs.html"
+						document.location = "http://administration.bigmeup.fr/backend/utilisateurs.html"
 					}
 				} else {
 					alert("Problème dans l'ajout de l'utilisateur");
@@ -484,7 +464,7 @@ var Retour = React.createClass({
 			document.location = "profil.html";
 		} else {// Sinon
 			document.cookie   = "bmu_adm_usr_id=true; expires=" + date + "; path=/";
-			document.location = "http://bigmeup.istic.univ-rennes1.fr/backend/utilisateurs.html"
+			document.location = "http://administration.bigmeup.fr/backend/utilisateurs.html"
 		}
 	},
 	
@@ -518,7 +498,6 @@ var Profil = React.createClass({
 				<Siret /><br />
 				<Statut /><br />
 				<Tva /><br />
-				<Informations /><br />
 				
 				<Banni /><br />
 				<FrenchTech /><br />

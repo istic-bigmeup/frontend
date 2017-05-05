@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>BigMeUp - Profil</title>
+	
+    <link rel="stylesheet" href="bootstrap/css/bootstrap-theme.min.css" />
+    <link rel="stylesheet" href="bootstrap/css/bootstrap.css" />
+    <link rel="stylesheet" href="bootstrap/css/style.css" />
+	  <link href="https://code.jquery.com/ui/1.10.4/themes/ui-lightness/jquery-ui.css" rel="stylesheet">
+  </head>
+  
+  <body>
+	<div class="container">
+		<div id="header"></div>
+		
+		<div id="navbar"></div>
+		
+		<div id="container"></div>
+
+	</div>
+    
+   <!--
+    <script type="text/javascript" src="//platform.linkedin.com/in.js">
+        api_key: 779g2pii5sc9yf
+        authorize: true
+        onLoad: onLinkedInLoad
+    </script>-->
+
+    <script src="//code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
+    <script src="https://code.jquery.com/ui/1.10.4/jquery-ui.js"></script>
+    <script src="bootstrap/js/bootstrap.min.js" ></script>
+    <script src="build/react.js"></script>
+    <script src="build/react-dom.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-core/5.8.24/browser.min.js"></script>
+	
+	<script src="js/static_contents/header.js" type="text/babel"></script>
+	<script>
+		// ========== Chargement du menu ========
+		// Récupération des cookies 
+		var cookiesTmp = document.cookie.split("; ");
+		var cookies = [];
+		for(var i = 0; i < cookiesTmp.length; i++){
+			var key 	= cookiesTmp[i].split("=")[0];
+			var value 	= cookiesTmp[i].split("=")[1];
+			cookies[key] = value;
+		}
+		
+		// Création de la balise script
+		var script 	= document.createElement("script");
+		// Ajout du type pour que ce soit compatible avec ReactJS
+		script.type = "text/babel";
+		
+		// Ajout de la source
+		if(cookies["bmu_adm_usr_id"] == undefined){// Si c'est un admin qui a voulu modifier le profil de quelqu'un
+			script.src = "js/static_contents/navbar.js";
+		} else {// Sinon
+			script.src = "http://administration.bigmeup.fr/backend/js/static_contents/navbar.js";
+		}
+		
+		// Affichage du script voulu
+		document.body.appendChild(script);
+	</script>
+	<script src="js/profil/profil.js" type="text/babel"></script>
+	
+	<script>
+		// This is called with the results from from FB.getLoginStatus().
+		function statusChangeCallback(response) {
+		console.log('statusChangeCallback');
+		console.log(response);
+		// The response object is returned with a status field that lets the
+		// app know the current login status of the person.
+		// Full docs on the response object can be found in the documentation
+		// for FB.getLoginStatus().
+		if (response.status === 'connected') {
+		  // Logged into your app and Facebook.
+		  testAPI();
+		} else if (response.status === 'not_authorized') {
+		  // The person is logged into Facebook, but not your app.
+		  document.getElementById('status').innerHTML = 'Please log ' +
+			'into this app.';
+		} else {
+		  // The person is not logged into Facebook, so we're not sure if
+		  // they are logged into this app or not.
+		  document.getElementById('status').innerHTML = 'Please log ' +
+			'into Facebook.';
+		}
+		}
+
+		// This function is called when someone finishes with the Login
+		// Button.  See the onlogin handler attached to it in the sample
+		// code below.
+		function checkLoginState() {
+		FB.getLoginStatus(function(response) {
+		  statusChangeCallback(response);
+		});
+		}
+
+		window.fbAsyncInit = function() {
+		FB.init({
+		appId      : '415541472125819',
+		cookie     : true,  // enable cookies to allow the server to access 
+							// the session
+		xfbml      : true,  // parse social plugins on this page
+		version    : 'v2.8' // use graph api version 2.8
+		});
+
+		// Now that we've initialized the JavaScript SDK, we call 
+		// FB.getLoginStatus().  This function gets the state of the
+		// person visiting this page and can return one of three states to
+		// the callback you provide.  They can be:
+		//
+		// 1. Logged into your app ('connected')
+		// 2. Logged into Facebook, but not your app ('not_authorized')
+		// 3. Not logged into Facebook and can't tell if they are logged into
+		//    your app or not.
+		//
+		// These three cases are handled in the callback function.
+
+		FB.getLoginStatus(function(response) {
+		statusChangeCallback(response);
+		});
+
+		};
+
+		// Load the SDK asynchronously
+		(function(d, s, id) {
+		var js, fjs = d.getElementsByTagName(s)[0];
+		if (d.getElementById(id)) return;
+		js = d.createElement(s); js.id = id;
+		js.src = "//connect.facebook.net/en_US/sdk.js";
+		fjs.parentNode.insertBefore(js, fjs);
+		}(document, 'script', 'facebook-jssdk'));
+
+		// Here we run a very simple test of the Graph API after login is
+		// successful.  See statusChangeCallback() for when this call is made.
+		function testAPI() {
+		console.log('Welcome!  Fetching your information.... ');
+		FB.api('/me', function(response) {
+		  console.log('Successful login for: ' + response.name);
+		  document.getElementById('status').innerHTML =
+			'Thanks for logging in, ' + response.name + '!';
+		});
+		}
+	</script>
+
+	<script type="text/javascript">
+		
+		// Setup an event listener to make an API call once auth is complete
+		function onLinkedInLoad() {
+			//IN.Event.on(IN, "auth", getProfileData);
+		}
+
+		// Handle the successful return from the API call
+		function onSuccess(data) {
+			console.log(data);
+			console.log('Successful Login');
+		}
+
+		// Handle an error response from the API call
+		function onError(error) {
+			console.log(error);
+		}
+
+		// Use the API call wrapper to request the member's basic profile data
+		function getProfileData() {
+			IN.API.Raw("/people/~").result(onSuccess).error(onError);
+		}
+
+	</script>
+
+
+	<!--
+	  Below we include the Login Button social plugin. This button uses
+	  the JavaScript SDK to present a graphical Login button that triggers
+	  the FB.login() function when clicked.
+	-->
+	<center>
+	  <fb:login-button scope="public_profile,email" onlogin="checkLoginState();">
+	  </fb:login-button>
+
+	  <script type="in/Login"></script>
+	</center>
+
+
+	<div id="status">
+	</div>
+
+  </body>
+</html>

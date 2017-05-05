@@ -1,22 +1,14 @@
-function getCookie(cname) {
-    var name = cname + "=";
-    var ca = document.cookie.split(';');
-    for(var i = 0; i < ca.length; i++) {
-        var c = ca[i];
-        while (c.charAt(0) == ' ') {
-            c = c.substring(1);
-        }
-        if (c.indexOf(name) == 0) {
-            return c.substring(name.length, c.length);
-        }
-    }
-    return "";
-}
 
-//Get the user id
-var userId = getCookie("bmu_user_id");
-var testOldMdp = false;
+var userId = getCookie("bmu_user_id"); //Identifiant de l'utilisateur 
+var testOldMdp = false; //Représente la conformité de l'ancien mot de passe
 
+/**
+ * ========================================== COMPOSANTS ====================================
+ */
+
+/**
+ * Input de type password devrant contenir l'ancien mot de passe
+ */
 var OldPwdInput = React.createClass({
     getInitialState: function(){
         return {
@@ -25,6 +17,7 @@ var OldPwdInput = React.createClass({
         }
     },
 
+    //Action exécutée au changement de valeur du champ
     handleInputChange: function (event) {
         const _target = event.target;
         const _value = _target.type === 'checkbox' ? _target.checked : _target.value;
@@ -35,12 +28,13 @@ var OldPwdInput = React.createClass({
         });
     },
 
+    //Action exécutée à la perte du focus. Il vérifie la conformité du mdp entré par rapport à l'ancien mdp 
     handleBlur: function (event) {
         var mdp = this.state.value;
         var oldTextBox = $("#oldTextBox");
 
 		$.ajax({
-			url: "http://bigmeup.istic.univ-rennes1.fr/api/front/getUser.php?id=" + userId + "&mdp=" + mdp
+			url: "http://administration.bigmeup.fr/api/front/getUser.php?id=" + userId + "&mdp=" + mdp
 		}).done(function (data) {// When done
 			// Parses the data from a JSON to an array
 			data = JSON.parse(data);
@@ -54,8 +48,6 @@ var OldPwdInput = React.createClass({
                 oldTextBox.show();
                 testOldMdp = false;
             } 
-
-            console.table(data);
 		});
     },
 
@@ -73,6 +65,9 @@ var OldPwdInput = React.createClass({
 
 });
 
+/**
+ * Input de type password devrant contenir le nouveau mdp
+ */
 var NewPwdInput = React.createClass({
     getInitialState: function(){
         return {
@@ -81,6 +76,7 @@ var NewPwdInput = React.createClass({
         }
     },
 
+    //Action exécutée au changement de valeur du champ
     handleInputChange: function (event) {
         const _target = event.target;
         const _value = _target.type === 'checkbox' ? _target.checked : _target.value;
@@ -91,19 +87,29 @@ var NewPwdInput = React.createClass({
         });
     },
 
+    //Action exécutée à la perte du focus. Il vérifie la conformité du mdp entré puis sa similitude avec la confirmation 
     handleBlur: function (event) {
         var confirmInputValue = $("#confirmValue").val();
         var newTextBox = $("#newTextBox");
         var confTextBox = $("#confTextBox");
+        var newTextBoxWarning = $("#newTextBoxWarning");
 
-        if (this.state.value == confirmInputValue) {
-            newTextBox.hide();
-            confTextBox.hide();
+        //Vérification de la conformité du mot de passe
+        if(checkMdp(this.state.value)){
+            //Vérification de la similitude avec la confirmation
+            if (this.state.value == confirmInputValue) {
+                newTextBox.hide();
+                confTextBox.hide();
+            }
+            else{
+                newTextBox.show();
+                confTextBox.show();
+            }
+            newTextBoxWarning.hide();
         }
         else{
-            newTextBox.show();
-            confTextBox.show();
-        } 
+            newTextBoxWarning.show();
+        }
     },
 
     render: function(){
@@ -112,13 +118,17 @@ var NewPwdInput = React.createClass({
                 <label htmlFor="newValue" className="col-2 col-form-label">Nouveau</label>
                 <div className="col-10">
                     <input type="password" name="newValue" id="newValue" className={"form-control " + this.state.inputClass} value={this.state.value} onChange={this.handleInputChange} onBlur={this.handleBlur} required />
-                    <small className="form-text text-muted" id="newTextBox" style={{ display: "none" }}>Les mots de passe ne correspondent pas.</small>
+                    <div className="form-text text-muted" id="newTextBox" style={{ display: "none" }}>Les mots de passe ne correspondent pas.</div>
+                    <div className="form-text text-warning" id="newTextBoxWarning" style={{ display: "none" }}>Le mot de passe doit contenir au moins 8 caractères, 1 majuscule, 1 miniscule et 1 caractère spécial.</div>
                 </div>
             </div>
         )
     }
 });
 
+/**
+ * Input de type password devrant contenir la confirmation du mdp
+ */
 var ConfirmInput = React.createClass({
     getInitialState: function(){
         return {
@@ -127,6 +137,7 @@ var ConfirmInput = React.createClass({
         }
     },
 
+    //Action exécutée au changement de valeur du champ
     handleInputChange: function (event) {
         const _target = event.target;
         const _value = _target.type === 'checkbox' ? _target.checked : _target.value;
@@ -137,6 +148,7 @@ var ConfirmInput = React.createClass({
         });
     },
 
+    //Action exécutée à la perte du focus. elle vérifie la similitude du mdp entré avec le nouveau mot de passe 
     handleBlur: function (event) {
         var newPwdInputValue = $("#newValue").val();
         var confTextBox = $("#confTextBox");
@@ -165,8 +177,11 @@ var ConfirmInput = React.createClass({
     }
 });
 
+/** 
+ * Input de type bouton gérant la soumission du formulaire
+ */
 var BtnSubmit = React.createClass({
-
+    //Action exécutée au clic sur le bouton. Elle soumet le formulaire
     handleClick: function (event) {
         event.preventDefault();
         submit();
@@ -179,6 +194,9 @@ var BtnSubmit = React.createClass({
     }
 });
 
+/**
+ * Bloc de message de type alert notifiant le succès de l'opération
+ */
 var AlertBoxSuccess = React.createClass({
     render: function(){
         return (
@@ -192,6 +210,9 @@ var AlertBoxSuccess = React.createClass({
     }
 });
 
+/**
+ * Bloc de message de type alert notifiant le l'échec de l'opération
+ */
 var AlertBoxError = React.createClass({
     render: function(){
         return (
@@ -204,6 +225,10 @@ var AlertBoxError = React.createClass({
         )
     }
 });
+
+/**
+ * ========================================== COMPOSANT PRINCIPAL ====================================
+ */
 
 var Form = React.createClass({
 
@@ -228,11 +253,17 @@ var Form = React.createClass({
     }
 });
 
-ReactDOM.render(
-    <Form />,
-    document.getElementById("container")
+ReactDOM.render(<Form />, document.getElementById("container")
 );
 
+/**
+ * ========================================== FONCTIONS ====================================
+ */
+
+/**
+ * Gère la soumission du formulaire
+ * 
+ */
 function submit(){
     var newPwdInputValue = $("#newValue").val();
     var confirmInputValue = $("#confirmValue").val();
@@ -241,40 +272,90 @@ function submit(){
     var oldTextBox = $("#oldTextBox");
     var alertBoxSucces = $("#alertBoxSuccess");
     var alertBoxError = $("#alertBoxError");
+    var newTextBoxWarning = $("#newTextBoxWarning");
     
     //Définition des données à envoyer au serveur
     var data = "id=" + userId + "&mdp=" + newPwdInputValue;
 
-    if((newPwdInputValue == confirmInputValue) && testOldMdp ){
-        $.ajax({
-            url : "http://bigmeup.istic.univ-rennes1.fr/api/front/updateUser.php",
-            type : 'POST',
-            data : data
-        }).done(function(response){
-				// Parses the data from a JSON to an array
-				data = JSON.parse(response);
+    //Vérification de la conformité du nouveau mot de passe
+    if(checkMdp(newPwdInputValue)){
+        newTextBoxWarning.hide();
 
-				if(data["response"] == "true"){
-                    console.info(response);
-                    console.log("Enregistrement effectué !");
+        //Vérification de la similitude entre le nouveau mdp et la confirmation et la conformité de l'ancien avant envoie des données
+        if((newPwdInputValue == confirmInputValue) && testOldMdp){
+            $.ajax({
+                url : "http://administration.bigmeup.fr/api/front/updateUser.php",
+                type : 'POST',
+                data : data
+            }).done(function(response){
+                    // Parses the data from a JSON to an array
+                    data = JSON.parse(response);
 
-                    alertBoxSucces.show();
-                    alertBoxError.hide();
-                    newTextBox.hide();
-                    confTextBox.hide();
-					alert("Mot de passe modifié");
-					window.location = "index.html";
-                }
-                else{
-                    console.log("Enregistrement echoué !");
-					alert("Erreur dans la modification de mot de passe");
-                }
-        });
+                    if(data["response"] == "true"){
+                        alertBoxSucces.show();
+                        alertBoxError.hide();
+                        newTextBox.hide();
+                        confTextBox.hide();
+                        alert("Mot de passe modifié");
+                        window.location = "index.html";
+                    }
+                    else{
+                        alert("Erreur lors la modification de mot de passe");
+                    }
+            });
+        }
+        else{
+            alertBoxSucces.hide();
+            alertBoxError.show();
+            newTextBox.show();
+            confTextBox.show();
+        } 
     }
     else{
-        alertBoxSucces.hide();
-        alertBoxError.show();
-        newTextBox.show();
-        confTextBox.show();
-    } 
+        newTextBoxWarning.show();
+    }
+}
+
+/**
+ * Vérification de la coformité du mot de passe
+ * 
+ * @param {String} mdp Mot de passe à vérifier
+ */
+function checkMdp(mdp){
+    var checker = false;
+
+    //Vérifie le nombre de caractère du mot de passe
+    checker = (mdp.length >= 8) ? true : false;
+
+    //Vérification de la présence de majuscule, de miniscile et de caractères spéciaux
+    if(checker){
+        var lettreMin = (mdp.search(new RegExp("[a-z]")) >= 0) ? true : false;
+        var lettreMaj = (mdp.search(new RegExp("[A-Z]")) >= 0) ? true : false;
+        var caractSpec = (mdp.search(new RegExp("[&@€£ùµ¢%#:;,=_'~\!\^\$\(\)\{\}\?\.\/\\\|]")) >= 0) ? true : false;
+
+        checker = lettreMin && lettreMaj && caractSpec;
+    }
+
+    return checker;
+}
+
+/**
+ * Récupère le cookie spécifié
+ * 
+ * @param {String} cname Nom du cookie
+ * @returns 
+ */
+function getCookie(cname) {
+    var name = cname + "=";
+    var ca = document.cookie.split(';');
+    for(var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') {
+            c = c.substring(1);
+        }
+        if (c.indexOf(name) == 0) {
+            return c.substring(name.length, c.length);
+        }
+    }
+    return "";
 }

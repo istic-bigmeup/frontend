@@ -2,8 +2,8 @@
  * ====================================== ETATS DE LA MISSION ================================
  *
  * 0 : Création
- * 1 : Validée prestataire
- * 2 : Validée client
+ * 1 : Attente de validation client
+ * 2 : Attente de validation prestataire
  * 3 : Invalidée prestataire
  * 4 : Invalidée client
  * 5 : En attente de réalisation
@@ -20,9 +20,12 @@
 /**
  *  ========================================= VARIABLES ====================================
  */
-var URL_PDF = "http://bigmeup.istic.univ-rennes1.fr/pdf_generator/resources/";
+var URL_PDF = "http://administration.bigmeup.fr/pdf_generator/resources/";
+var JOUR_EN_MS	= 86400000;
 var mailOk = false;
 var etatUtilisateur = 0;
+
+var missionDansUrl = undefined;
 
 var etatMission = 0;
 
@@ -67,14 +70,13 @@ for(var i = 0; i < cookiesTmp.length; i++){
  * @param	action	L'action qui est faite
  */
 var controle = function(action){
-	var ok = false;
+	var ok = true;
+	var tmp;
+	
 	/**
 	 * ========== CONTROLE DES CHAMPS SEULEMENT SI LES CHAMPS SONT LA===========
 	 */
 	if(showInputField() && (action != "retour")){
-		var tmp;
-		
-		ok = true;
 		// Contrôle de l'objet
 		tmp = document.getElementsByName("objet")[0].value.length > 0;
 		ok &= tmp;
@@ -102,20 +104,6 @@ var controle = function(action){
 			document.getElementById("err_quantite").style.display = "none";
 		}
 		
-		// Contrôle des frais
-		tmp = document.getElementsByName("cb_frais")[0].checked;
-		if(tmp){
-			tmp = document.getElementsByName("frais")[0].value.length > 0;
-			ok &= tmp;
-			if(!tmp){
-				document.getElementById("err_frais").style.display = "block";
-			} else {
-				document.getElementById("err_frais").style.display = "none";
-			}
-		} else {
-			document.getElementById("err_frais").style.display = "none";
-		}
-		
 		// Contrôle de la date de début
 		tmp = document.getElementsByName("date_debut")[0].value.length > 0;
 		ok &= tmp;
@@ -131,12 +119,27 @@ var controle = function(action){
 		if(!tmp){
 			document.getElementById("err_date_fin").style.display = "block";
 		} else {
-			document.getElementById("err_date_fin").style.display = "none";
+			// On prend les dates
+			var dateDeb = document.getElementsByName("date_debut")[0].value;
+			var dateFin = document.getElementsByName("date_fin")[0].value;
+			
+			dateDeb = new Date(dateDeb);
+			dateFin = new Date(dateFin);
+			
+			dateDeb = dateDeb.getTime();
+			dateFin = dateFin.getTime();
+			
+			// On prend le nombre de jours
+			var nbJours = parseInt(document.getElementsByName("quantite")[0].value);
+			nbJours = nbJours * JOUR_EN_MS;
+			
+			if((dateFin + JOUR_EN_MS) - dateDeb < nbJours){// Si la durée de la mission est inférieure au nombre de jours
+				ok &= false;
+				document.getElementById("err_date_fin").style.display = "block";
+			} else {// Sinon, c'est bon
+				document.getElementById("err_date_fin").style.display = "none";
+			}
 		}
-		
-		// Contrôle des clauses
-		tmp = document.getElementsByName("clauses")[0].value.length > 0;
-		ok &= tmp;
 		
 		// Contrôle du lieu
 		tmp = document.getElementsByName("lieu_select")[0];
@@ -151,6 +154,11 @@ var controle = function(action){
 			}
 		}
 		
+		// Contrôle des frais
+		if(document.getElementsByName("frais")[0].value.length <= 0){
+			document.getElementsByName("frais")[0].value = 0;
+		}
+		
 		// contrôle du mail client
 		tmp = mailOk;
 		ok &= tmp;
@@ -163,7 +171,6 @@ var controle = function(action){
 	
 	// Affichage
 	if(afficherSectionValidation() && action != "refuser"){
-		ok = true;
 		// Contrôle de l'acceptation des CGV
 		tmp = document.getElementsByName("cb_cgv")[0].checked;
 		ok &= tmp;
@@ -213,7 +220,7 @@ var retour = function(){
 		// Sets the cookies
 		document.cookie = "bmu_vient_admin=false; expires=" + date + "; path=/";
 		
-		location.href = "../backend/missions.html";
+		location.href = "backend/missions.html";
 	} else {
 		location.href = "missions.html";
 	}
@@ -268,7 +275,7 @@ var confirmation = function(){
 	datas += "&lieu_mission=" + lieu;
 	
 	// Statut
-	datas += "&status=Validée Prestataire";
+	datas += "&status=En attente de validation client";
 	
 	// Validation du client
 	datas += "&validation_client=0";
@@ -278,7 +285,7 @@ var confirmation = function(){
 	
 	// Autres frais
 	var frais = valeurs["frais"];
-	if(!document.getElementsByName("cb_frais")[0].checked){
+	if(document.getElementsByName("frais")[0].value.length <= 0){
 		frais = "0";
 	} else {
 		// On enlève les 0 avant le chiffre s'il y en a
@@ -289,7 +296,7 @@ var confirmation = function(){
 	
 	// Sets the ajax request for the mission
 	$.ajax({
-		url: "http://bigmeup.istic.univ-rennes1.fr/api/front/setMission.php",
+		url: "http://administration.bigmeup.fr/api/front/setMission.php",
 		type: "POST",
 		data: datas
 	}).done(function(data){// When done
@@ -297,9 +304,16 @@ var confirmation = function(){
 		data = JSON.parse(data);
 		
 		if(data["answer"] == "true"){
+			// On crée le cookie
+			var date = new Date();
+			date.setTime(date.getTime() + (1*24*60*60*1000));
+			document.cookie = "type_message_navbar=success; expires=" + date + "; path=/";
+			document.cookie = "texte_message_navbar=Confirmation de la mission effectuée; expires=" + date + "; path=/";
+			
 			location.href = "missions.html";
 		} else {
 			alert("Problème dans l'ajout de la mission");
+			document.getElementsByName("btn-confirmer")[0].disabled = false;
 		}
 	});
 };
@@ -312,7 +326,7 @@ var refus = function(){
 	
 	// La requête
 	$.ajax({
-		url: "http://bigmeup.istic.univ-rennes1.fr/api/front/setMission.php",
+		url: "http://administration.bigmeup.fr/api/front/setMission.php",
 		type: "POST",
 		data: datas
 	}).done(function(data){// When done
@@ -320,7 +334,14 @@ var refus = function(){
 		data = JSON.parse(data);
 		
 		if(data["answer"] == "true"){
-			location.href = "missions.html";
+			var date = new Date();
+			date.setTime(date.getTime() + (1 * 24 * 60 * 60 * 1000));
+
+			// Sets the cookies
+			document.cookie = "bmu_mission_id=" + values["id_mission"] + "; expires=" + date + "; path=/";
+			
+			// Rechargement de la page
+			location.reload();
 		} else {
 			alert("Problème dans l'annulation de la mission");
 		}
@@ -337,7 +358,7 @@ var validation = function(){
 	
 	// La requête
 	$.ajax({
-		url: "http://bigmeup.istic.univ-rennes1.fr/api/front/setMission.php",
+		url: "http://administration.bigmeup.fr/api/front/setMission.php",
 		type: "POST",
 		data: datas
 	}).done(function(data){// When done
@@ -345,9 +366,17 @@ var validation = function(){
 		data = JSON.parse(data);
 		
 		if(data["answer"] == "true"){
+			// On crée le cookie
+			var date = new Date();
+			date.setTime(date.getTime() + (1*24*60*60*1000));
+			document.cookie = "type_message_navbar=success; expires=" + date + "; path=/";
+			document.cookie = "texte_message_navbar=Validation de la mission effectuée; expires=" + date + "; path=/";
+			
+			// On redirige
 			location.href = "missions.html";
 		} else {
 			alert("Problème dans l'annulation de la mission");
+			document.getElementsByName("btn-valider")[0].disabled = false;
 		}
 	});
 };
@@ -360,7 +389,7 @@ var annulation = function(){
 	
 	// La requête
 	$.ajax({
-		url: "http://bigmeup.istic.univ-rennes1.fr/api/front/setMission.php",
+		url: "http://administration.bigmeup.fr/api/front/setMission.php",
 		type: "POST",
 		data: datas
 	}).done(function(data){// When done
@@ -368,6 +397,12 @@ var annulation = function(){
 		data = JSON.parse(data);
 		
 		if(data["answer"] == "true"){
+			// On crée le cookie
+			var date = new Date();
+			date.setTime(date.getTime() + (1*24*60*60*1000));
+			document.cookie = "type_message_navbar=success; expires=" + date + "; path=/";
+			document.cookie = "texte_message_navbar=Annulation de la mission effectuée; expires=" + date + "; path=/";
+			
 			location.href = "missions.html";
 		} else {
 			alert("Problème dans l'annulation de la mission");
@@ -424,7 +459,7 @@ var modification = function(){
 	datas += "&lieu_mission=" + lieu;
 	
 	// Statut
-	datas += "&status=" + (etatUtilisateur == 0 ? "Validée Prestataire" : "Validée Client");
+	datas += "&status=" + (etatUtilisateur == 0 ? "En attente de validation client" : "En attente de validation prestataire");
 	
 	// Validation du client
 	datas += "&validation_client=1";
@@ -433,12 +468,12 @@ var modification = function(){
 	datas += "&validation_prestataire=1";
 	
 	// Autres frais
-	var frais = valeurs["frais"];
-	if(!document.getElementsByName("cb_frais")[0].checked){
+	var frais = "0";
+	if(document.getElementsByName("frais")[0].value.length <= 0){
 		frais = "0";
 	} else {
 		// On enlève les 0 avant le chiffre s'il y en a
-		frais = parseInt(frais);
+		frais = parseInt(document.getElementsByName("frais")[0].value);
 	}
 	datas += "&autres_frais=" + frais;
 	
@@ -446,7 +481,7 @@ var modification = function(){
 	
 	// Sets the ajax request for the mission
 	$.ajax({
-		url: "http://bigmeup.istic.univ-rennes1.fr/api/front/setMission.php",
+		url: "http://administration.bigmeup.fr/api/front/setMission.php",
 		type: "POST",
 		data: datas
 	}).done(function(data){// When done
@@ -454,6 +489,12 @@ var modification = function(){
 		data = JSON.parse(data);
 		
 		if(data["answer"] == "true"){
+			// On crée le cookie
+			var date = new Date();
+			date.setTime(date.getTime() + (1*24*60*60*1000));
+			document.cookie = "type_message_navbar=success; expires=" + date + "; path=/";
+			document.cookie = "texte_message_navbar=Modification de la mission effectuée; expires=" + date + "; path=/";
+			
 			location.href = "missions.html";
 		} else {
 			alert("Problème dans l'ajout de la mission");
@@ -472,7 +513,7 @@ var realisation = function(){
 	
 	// Sets the ajax request for the mission
 	$.ajax({
-		url: "http://bigmeup.istic.univ-rennes1.fr/api/front/setMission.php",
+		url: "http://administration.bigmeup.fr/api/front/setMission.php",
 		type: "POST",
 		data: datas
 	}).done(function(data){// When done
@@ -480,6 +521,12 @@ var realisation = function(){
 		data = JSON.parse(data);
 		
 		if(data["answer"] == "true"){
+			// On crée le cookie
+			var date = new Date();
+			date.setTime(date.getTime() + (1*24*60*60*1000));
+			document.cookie = "type_message_navbar=success; expires=" + date + "; path=/";
+			document.cookie = "texte_message_navbar=Réalisation de la mission effectuée; expires=" + date + "; path=/";
+			
 			location.href = "missions.html";
 		} else {
 			alert("Problème dans l'ajout de la mission");
@@ -516,7 +563,7 @@ var verifAuDessusZero = function(name){
 	var elt = document.getElementsByName(name)[0];
 	// Si ce n'est pas un nombre ou que le nombre est inférieur à zéro
 	if(isNaN(parseFloat(elt.value)) || parseFloat(elt.value) < 0){
-		elt.value = 0;
+		elt.value = "";
 	}
 };
 
@@ -549,7 +596,9 @@ var afficherBtnConfirmer = function(){
  * Pour savoir si on affiche le bouton Annuler
  */
 var afficherBtnAnnuler = function(){
-	return etatMission != 7 && etatMission != 0 && etatMission != 6;
+	return ((etatMission != 7 && etatMission != 0 && etatMission != 6) && !missionCommencee()) ||
+			(etatMission == 3 && etatUtilisateur == 0) ||
+			(etatMission == 4 && etatUtilisateur == 1);
 };
 
 /**
@@ -564,6 +613,13 @@ var afficherBtnDevis = function(){
  */
 var afficherBtnFacture = function(){
 	return etatMission == 6;
+};
+
+/**
+ * Pour savoir si on affiche le bouton Voir la facture
+ */
+var afficherBtnFactureBMU = function(){
+	return etatMission == 6 && (cookies["bmu_admin"] == "true" || etatUtilisateur == 0);
 };
 
 /**
@@ -585,8 +641,8 @@ var afficherBtnModifier = function(){
 /**
  * Pour savoir si on affiche le bouton Modifier
  */
-var afficherBtnRealiser = function(){
-	return 	etatMission == 5 && etatUtilisateur == 0;
+var afficherBtnRealiser = function(){	
+	return 	etatMission == 5 && etatUtilisateur == 0 && missionCommencee();
 };
 
 /**
@@ -601,6 +657,24 @@ var afficherSectionValidation = function(){
 };
 
 /**
+ * Pour savoir si la mission est commencée
+ */
+var missionCommencee = function(){
+	// On prend les dates
+	var today 				= new Date();
+	var date_commencement 	= new Date(values["date_debut"]);
+	
+	try{
+		// On regarde si la date du jour est supérieure à la date de commencement
+		today 				= today.getTime();
+		date_commencement 	= date_commencement.getTime();
+		return today >= date_commencement;
+	}catch(e){}
+	
+	return false;
+}
+
+/**
  * Pour avoir le code correspondant à l'état
  */
 var getEtatCode = function(etat){
@@ -609,11 +683,11 @@ var getEtatCode = function(etat){
 			etatMission = 0;
 		break;
 		
-		case "Validée Prestataire":
+		case "En attente de validation client":
 			etatMission = 1;
 		break;
 		
-		case "Validée Client":
+		case "En attente de validation prestataire":
 			etatMission = 2;
 		break;
 		
@@ -668,10 +742,27 @@ var showInputField = function(){
 /**
  * ======================== TRAITEMENT =================
  */
+// On regarde si l'id de la mission est dans l'url
+var tmpUrl = window.location.href.split("#");
+if(tmpUrl.length > 1){// Si l'url est un tableau à 2 indices [0][1]
+	// On prend ce qui est après le #
+	tmpUrl = tmpUrl[1];
+	if(tmpUrl.indexOf("msn") == 0){// Si l'id de la mission est là, on prend l'id mis sous la forme msnID
+		// On enlève le sigle msn (qui est le trigramme de mission et pas l'ancien système de tchat de Windows)
+		missionDansUrl = tmpUrl.substr(3);
+	}
+}
+
 // Si le cookie indiquant l'id de la mission est là
-if(cookies["bmu_mission_id"] != undefined){
-	// Sets the mission id
-	values["id_mission"] = cookies["bmu_mission_id"];
+if(cookies["bmu_mission_id"] != undefined || missionDansUrl != undefined){
+	// On met l'id de la mission...
+	if(cookies["bmu_mission_id"] != undefined){
+		// ... Si le cookie est présent
+		values["id_mission"] = cookies["bmu_mission_id"];
+	} else {
+		// ... Ou si l'id est dans l'URL
+		values["id_mission"] = missionDansUrl;
+	}
 	
 	// Unsets the mission id cookie
 	var date = new Date();
@@ -680,7 +771,7 @@ if(cookies["bmu_mission_id"] != undefined){
 	
 	// Gets the value of the mission
 	$.ajax({
-		url: "http://bigmeup.istic.univ-rennes1.fr/api/front/getMission.php?id=" + values["id_mission"],
+		url: "http://administration.bigmeup.fr/api/front/getMission.php?id=" + values["id_mission"],
 		async: false
 	}).done(function(data){// When done
 		// Parses the data from a JSON to an array
@@ -708,7 +799,7 @@ if(cookies["bmu_mission_id"] != undefined){
 		
 		// Gets the mail adress
 		$.ajax({
-			url: "http://bigmeup.istic.univ-rennes1.fr/api/front/getUser.php?id=" + data["id_client"],
+			url: "http://administration.bigmeup.fr/api/front/getUser.php?id=" + data["id_client"],
 			async: false
 		}).done(function(dataClient){// When done
 			// Parses the data from a JSON to an array
@@ -754,14 +845,14 @@ var Objet = React.createClass({
 								placeholder="Objet de la mission" />) : (<p>{getDefaultInputValue("objet")}</p>);
 		return 	(
 					<div>
-						<p>Objet de la mission</p>
+						<p><b>Objet de la mission</b></p>
 						
 						{input}
 						
 						<p 	id="err_objet" 
-							className="text-warning" 
+							className="text-danger" 
 							style={{display: "none"}}>
-								Veuillez renseigner l'objet
+								<b>Veuillez renseigner l'objet</b>
 						</p>
 						<br/>
 					</div>
@@ -770,7 +861,7 @@ var Objet = React.createClass({
 });
 
 /**
- * Création du champ Prix journalier HT
+ * Création du champ Tarif par jour HT
  */
 var PrixUnitaireHT = React.createClass({
 	render: function () {
@@ -779,17 +870,17 @@ var PrixUnitaireHT = React.createClass({
 								type="number" 
 								defaultValue={getDefaultInputValue("pu_ht")}
 								onChange={() => verifAuDessusZero('pu_ht')}
-								placeholder="Prix journalier HT" />) : (<p>{getDefaultInputValue("pu_ht")} €</p>);
+								placeholder="Tarif par jour HT" />) : (<p>{getDefaultInputValue("pu_ht")} €</p>);
 		return 	(
 					<div>
-						<p>Prix journalier HT</p>
+						<p><b>Tarif par jour HT</b></p>
 						
 						{input}
 						
 						<p 	id="err_pu_ht" 
-							className="text-warning" 
+							className="text-danger" 
 							style={{display: "none"}}>
-								Veuillez renseigner le prix unitaire HT
+								<b>Veuillez renseigner le prix unitaire HT</b>
 						</p>
 						<br/>
 					</div>
@@ -811,14 +902,14 @@ var Quantite = React.createClass({
 		
 		return 	(
 					<div>
-						<p>Nombre de jours</p>
+						<p><b>Nombre de jours</b></p>
 						
 						{input}
 						
 						<p 	id="err_quantite" 
-							className="text-warning" 
+							className="text-danger" 
 							style={{display: "none"}}>
-								Veuillez renseigner la quantité
+								<b>Veuillez renseigner la quantité</b>
 						</p>
 						<br/>
 					</div>
@@ -833,23 +924,24 @@ var Frais = React.createClass({
 	render: function () {
 		var input = showInputField() ? (
 						<div>
-							<input name="cb_frais" type="checkbox" value="cb_frais" />Frais (à forfaitiser à la journée)
 							<input 	name="frais" 
 								className="form-control" 
 								defaultValue={getDefaultInputValue("frais")}
 								type="number" 
 								onChange={() => verifAuDessusZero('frais')}
 								placeholder="Frais prévus" />
-						</div>) : (<p>Frais:<br/>{getDefaultInputValue("frais")} €</p>);
+						</div>) : (<p>{getDefaultInputValue("frais")} €</p>);
 								
 		return 	(
 					<div>
+						<p><b>Frais sur l'ensemble de la mission</b></p>
+						
 						{input}
 						
 						<p 	id="err_frais" 
-							className="text-warning" 
+							className="text-danger" 
 							style={{display: "none"}}>
-								Veuillez renseigner les frais
+								<b>Veuillez renseigner les frais</b>
 						</p>
 						<br/>
 					</div>
@@ -863,21 +955,25 @@ var Frais = React.createClass({
  */
 var DateDebut = React.createClass({
 	render: function () {
-		var input = showInputField() ? (<input 	name="date_debut" 
-					className="form-control" 
-					type="date" 
-					defaultValue={getDefaultInputValue("date_debut")}
-					placeholder="Date de début: jj/mm/aaaa" />) : (<p>{getDefaultInputValue("date_debut")}</p>);
+		var input = showInputField() ? (
+					<input 	name="date_debut" 
+							className="datepicker form-control" 
+							type="text" 
+							defaultValue={getDefaultInputValue("date_debut")}
+							placeholder="Date de début: aaaa-mm-jj" 
+							data-provide="datepicker" 
+							readOnly="true"/>
+					) : (<p>{getDefaultInputValue("date_debut")}</p>);
 		return 	(
 					<div>
-						<p>Date de début</p>
+						<p><b>Date de début</b></p>
 						
 						{input}
 						
 						<p 	id="err_date_debut" 
-							className="text-warning" 
+							className="text-danger" 
 							style={{display: "none"}}>
-								Veuillez renseigner la date de début de la mission
+								<b>Veuillez renseigner la date de début de la mission</b>
 						</p>
 						<br/>
 					</div>
@@ -890,22 +986,26 @@ var DateDebut = React.createClass({
  */
 var DateFin = React.createClass({
 	render: function () {
-		var input = showInputField() ? (<input 	name="date_fin" 
-					className="form-control" 
-					type="date" 
-					defaultValue={getDefaultInputValue("date_fin")}
-					placeholder="Date de fin: jj/mm/aaaa" />) : (<p>{getDefaultInputValue("date_fin")}</p>);
+		var input = showInputField() ? (
+										<input 	name="date_fin" 
+												className="datepicker form-control" 
+												type="text" 
+												defaultValue={getDefaultInputValue("date_fin")}
+												placeholder="Date de fin: aaaa-mm-jj" 
+												data-provide="datepicker" 
+												readOnly="true"/>) 
+										: (<p>{getDefaultInputValue("date_fin")}</p>);
 					
 		return 	(
 					<div>
-						<p>Date de fin</p>
+						<p><b>Date de fin</b></p>
 						
 						{input}
 						
 						<p 	id="err_date_fin" 
-							className="text-warning" 
+							className="text-danger" 
 							style={{display: "none"}}>
-								Veuillez renseigner la date de fin de mission
+								<b>Veuillez renseigner une date de fin de mission valide</b>
 						</p>
 						<br/>
 					</div>
@@ -927,11 +1027,11 @@ var Clauses = React.createClass({
 						defaultValue={getDefaultInputValue("clauses")}
 						type="input" 
 						placeholder="Clauses du contrat">
-					</textarea>) : (<p>{clauses}</p>);
+					</textarea>) : (<pre>{clauses}</pre>);
 					
 		return 	(
 					<div>
-						<p>Clauses (supplémentaires aux <a>CGV</a>) du contrat</p>
+						<p><b>Clauses (supplémentaires aux <a target="_blank" href="https://www.bigmeup.fr/fr/infos/terms">CGV</a>) du contrat</b></p>
 						
 						{input}
 						
@@ -959,10 +1059,10 @@ var Lieu = React.createClass({
 					<div>
 						<select name="lieu_select" className="form-control" onChange={this.selectChanged}>
 							<optgroup label="Entreprise cliente">
-								<option value="client">Locaux du client</option>
+								<option value="Locaux du client">Locaux du client</option>
 							</optgroup>
 							<optgroup label="Entreprise prestataire">
-								<option value="prestataire">Locaux du prestataire</option>
+								<option value="Locaux du prestataire">Locaux du prestataire</option>
 							</optgroup>
 							<optgroup label="Autre">
 								<option value="autre">Autre (à préciser)</option>
@@ -980,14 +1080,14 @@ var Lieu = React.createClass({
 					</div>) : (<p>{getDefaultInputValue("lieu_select")}</p>);
 		return 	(
 					<div>
-						<p>Lieu du déroulement de la mission</p>
+						<p><b>Lieu du déroulement de la mission</b></p>
 						
 						{input}
 						
 						<p 	id="err_lieu_input" 
-							className="text-warning" 
+							className="text-danger" 
 							style={{display: "none"}}>
-								Veuillez renseigner le lieu du déroulement de la mission
+								<b>Veuillez renseigner le lieu du déroulement de la mission</b>
 						</p>
 						
 						<br/>
@@ -1011,7 +1111,7 @@ var MailClient = React.createClass({
 			
 			// Sets the ajax request
 			$.ajax({
-				url: "http://bigmeup.istic.univ-rennes1.fr/api/front/getUser.php?mail=" + mail
+				url: "http://administration.bigmeup.fr/api/front/getUser.php?mail=" + mail
 			}).done(function(data){// When done
 				// Parses the data from a JSON to an array
 				data = JSON.parse(data);
@@ -1021,14 +1121,8 @@ var MailClient = React.createClass({
 					// Hides the errors
 					document.getElementById("err_mailClient").style.display = "none";
 
-					// Shows the success
-					document.getElementById("err_mailValide").style.display = "block";
-
 					mailOk = true;
 				} else {
-					// Hides the success
-					document.getElementById("err_mailValide").style.display = "none";
-
 					// Shows the error saying that the email is not valid
 					document.getElementById("err_mailInvalide").style.display = "block";
 
@@ -1054,24 +1148,19 @@ var MailClient = React.createClass({
 						) : (<p>{getDefaultInputValue("mailClient")}</p>);
 		return 	(
 					<div>
-						<p>Adresse email du client</p>
+						<p><b>Adresse email du client</b></p>
 						
 						{input}
 						
 						<p 	id="err_mailClient" 
-							className="text-warning" 
+							className="text-danger" 
 							style={{display: "none"}}>
-								Veuillez renseigner l'adresse email du client
+								<b>Veuillez renseigner l'adresse email du client</b>
 						</p>
 						<p 	id="err_mailInvalide" 
-							className="text-warning" 
+							className="text-danger" 
 							style={{display: "none"}}>
-								Veuillez renseigner une adresse email valide
-						</p>
-						<p 	id="err_mailValide"
-						className="text-success"
-						style={{display: "none"}}>
-						L'email est valide!
+								<b>Veuillez renseigner une adresse email valide</b>
 						</p>
 					</div>
 				);
@@ -1085,11 +1174,11 @@ var AcceptationCGV = React.createClass({
 	render: function () {
 		return 	(
 					<div>
-						<input name="cb_cgv" type="checkbox" />J'acepte les termes des <a>CGV</a>
+						<input name="cb_cgv" type="checkbox" />J'accepte les termes des <a target="_blank" href="https://www.bigmeup.fr/fr/infos/terms">CGV</a>
 						<p 	id="err_cb_cgv" 
-							className="text-warning" 
+							className="text-danger" 
 							style={{display: "none"}}>
-								Veuillez accepter les termes des CGV
+								<b>Veuillez accepter les termes des CGV</b>
 						</p>
 					</div>
 				);
@@ -1103,7 +1192,7 @@ var Confirmer = React.createClass({
 	render: function () {
 		return 	(
 					<input 	name="btn-confirmer" 
-							className="btn btn-success" 
+							className="btn btn-success btn-space" 
 							type="button" 
 							value="Confirmer" 
 							onClick={() => controle("confirmer")} />
@@ -1118,7 +1207,7 @@ var Sauvegarder = React.createClass({
 	render: function () {
 		return 	(
 					<input 	name="btn-sauvegarder" 
-							className="btn btn-warning" 
+							className="btn btn-warning btn-space" 
 							type="button" 
 							value="Sauvegarder" 
 							onClick={() => controle("sauvegarder")} />
@@ -1135,7 +1224,7 @@ var Refuser = React.createClass({
 					<input 	name="btn-refuser" 
 							className="btn btn-warning" 
 							type="button" 
-							value="Refuser" 
+							value="Modifier" 
 							onClick={() => controle("refuser")} />
 				);
 	}
@@ -1148,7 +1237,7 @@ var Valider = React.createClass({
 	render: function () {
 		return 	(
 					<input 	name="btn-valider" 
-							className="btn btn-success" 
+							className="btn btn-success btn-space" 
 							type="button" 
 							value="Valider" 
 							onClick={() => controle("valider")} />
@@ -1163,7 +1252,7 @@ var Annuler = React.createClass({
 	render: function () {
 		return 	(
 					<input 	name="btn-annuler" 
-							className="btn btn-danger" 
+							className="btn btn-danger btn-space" 
 							type="button" 
 							value="Annuler" 
 							onClick={() => controle("annuler")} />
@@ -1177,7 +1266,7 @@ var Annuler = React.createClass({
 var Facture = React.createClass({
 	open: function(){
 		$.ajax({
-			url: "http://bigmeup.istic.univ-rennes1.fr/api/front/getFacture.php?id=" + getDefaultInputValue("id_facture")
+			url: "http://administration.bigmeup.fr/api/front/getFacture.php?id=" + getDefaultInputValue("id_facture")
 		}).done(function(data){// When done
 			// Parses the data from a JSON to an array
 			data = JSON.parse(data);
@@ -1189,9 +1278,35 @@ var Facture = React.createClass({
 	render: function () {
 		return 	(
 					<input 	name="btn-facture" 
-							className="btn btn-primary" 
+							className="btn btn-primary btn-space" 
 							type="button" 
-							value="Voir la facture" 
+							value="Voir ma facture" 
+							onClick={this.open} />
+				);
+	}
+});
+
+/**
+ * Création du bouton Facture
+ */
+var FactureBMU = React.createClass({
+	open: function(){
+		$.ajax({
+			url: "http://administration.bigmeup.fr/api/front/getFacture.php?id=" + getDefaultInputValue("id_facture")
+		}).done(function(data){// When done
+			// Parses the data from a JSON to an array
+			data = JSON.parse(data);
+			data = data[0];
+			window.open(URL_PDF + "BIGMEUP" + data["numero_facture"] + ".pdf", "_blank");
+		});
+	},
+	
+	render: function () {
+		return 	(
+					<input 	name="btn-facture" 
+							className="btn btn-primary btn-space" 
+							type="button" 
+							value="Voir la facture de BigMeUp" 
 							onClick={this.open} />
 				);
 	}
@@ -1203,7 +1318,7 @@ var Facture = React.createClass({
 var Devis = React.createClass({
 	open: function(){
 		$.ajax({
-			url: "http://bigmeup.istic.univ-rennes1.fr/api/front/getDevis.php?id=" + getDefaultInputValue("id_devis")
+			url: "http://administration.bigmeup.fr/api/front/getDevis.php?id=" + getDefaultInputValue("id_devis")
 		}).done(function(data){// When done
 			// Parses the data from a JSON to an array
 			data = JSON.parse(data);
@@ -1215,9 +1330,9 @@ var Devis = React.createClass({
 	render: function () {
 		return 	(
 					<input 	name="btn-devis" 
-							className="btn btn-primary" 
+							className="btn btn-primary btn-space" 
 							type="button" 
-							value="Voir le devis" 
+							value="Voir mon devis" 
 							onClick={this.open} />
 				);
 	}
@@ -1230,7 +1345,7 @@ var Retour = React.createClass({
 	render: function () {
 		return 	(
 					<input 	name="btn-retour" 
-							className="btn btn-default" 
+							className="btn btn-default btn-space" 
 							type="button" 
 							value="Retour" 
 							onClick={() => controle("retour")} />
@@ -1245,7 +1360,7 @@ var Modifier = React.createClass({
 	render: function () {
 		return 	(
 					<input 	name="btn-modifier" 
-							className="btn btn-primary" 
+							className="btn btn-success btn-space" 
 							type="button" 
 							value="Modifier" 
 							onClick={() => controle("modifier")} />
@@ -1260,9 +1375,9 @@ var Realiser = React.createClass({
 	render: function () {
 		return 	(
 					<input 	name="btn-realiser" 
-							className="btn btn-success" 
+							className="btn btn-success btn-space" 
 							type="button" 
-							value="Réaliser" 
+							value="Mission réalisée" 
 							onClick={() => controle("realiser")} />
 				);
 	}
@@ -1310,9 +1425,27 @@ var Creation = React.createClass({
 						
 						{afficherBtnDevis() 	? <Devis /> 		: ""}
 						{afficherBtnFacture() 	? <Facture /> 		: ""}
+						{afficherBtnFactureBMU()? <FactureBMU /> 	: ""}
 					</form>
 				);
 	}
 });
 
 ReactDOM.render(<Creation />, document.getElementById("container"));
+
+$(function () {
+	$('.datepicker').datepicker({
+		altField: "#datepicker",
+		closeText: 'Fermer',
+		prevText: 'Précédent',
+		nextText: 'Suivant',
+		currentText: 'Aujourd\'hui',
+		monthNames: ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'],
+		monthNamesShort: ['Janv.', 'Févr.', 'Mars', 'Avril', 'Mai', 'Juin', 'Juil.', 'Août', 'Sept.', 'Oct.', 'Nov.', 'Déc.'],
+		dayNames: ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'],
+		dayNamesShort: ['Dim.', 'Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.'],
+		dayNamesMin: ['D', 'L', 'M', 'M', 'J', 'V', 'S'],
+		weekHeader: 'Sem.',
+		dateFormat: 'yy-mm-dd'
+	});
+});
